@@ -5,7 +5,9 @@ from __future__ import annotations
 import random
 from typing import TYPE_CHECKING
 
+from click import Option
 import numpy as np
+from pyparsing import Opt
 
 import minitorch
 
@@ -14,7 +16,7 @@ from .autodiff import Context
 from .tensor_ops import SimpleBackend, TensorBackend
 
 if TYPE_CHECKING:
-    from typing import Any, List, Tuple
+    from typing import Any, List, Tuple, Optional
 
     from .tensor import Tensor
     from .tensor_data import UserIndex, UserShape
@@ -103,9 +105,158 @@ class All(Function):
             return a.f.mul_reduce(a, int(dim.item()))
         else:
             return a.f.mul_reduce(a.contiguous().view(int(operators.prod(a.shape))), 0)
+        
+    @staticmethod
+    def backward(ctx: Context, grad_output: Tensor) -> Tuple[Tensor, None]:
+        # The derivative of All w.r.t. inputs is zero almost everywhere
+        a, dim_int = ctx.saved_values
+        return a.zeros(), None  # None for the gradient w.r.t. dim
 
 
-# TODO: Implement for Task 2.3.
+
+class Mul(Function):
+    @staticmethod
+    def forward(ctx: Context, t1: Tensor, t2: Tensor) -> Tensor:
+        ctx.save_for_backward(t1, t2)
+        return t1.f.mul_zip(t1, t2)
+    
+    @staticmethod
+    def backward(ctx: Context, grad_output: Tensor) -> Tuple[Tensor, Tensor]:
+        t1, t2 = ctx.saved_values
+        grad_t1 = grad_output * t2
+        grad_t2 = grad_output * t1
+        return grad_t1, grad_t2
+
+
+
+class Sigmoid(Function):
+    @staticmethod
+    def forward(ctx: Context, t1: Tensor) -> Tensor:
+        out = t1.f.sigmoid_map(t1)
+        ctx.save_for_backward(out)
+        return out
+    
+    @staticmethod
+    def backward(ctx: Context, grad_output: Tensor) -> Tensor:
+        (result,) = ctx.saved_values
+        return grad_output * result * (1 - result)
+
+
+
+class ReLU(Function):
+    @staticmethod
+    def forward(ctx: Context, t1: Tensor) -> Tensor:
+        ctx.save_for_backward(t1)
+        return t1.f.relu_map(t1)
+    
+    @staticmethod
+    def backward(ctx: Context, grad_output: Tensor) -> Tensor:
+        (t1,) = ctx.saved_values
+        return grad_output.f.relu_back_zip(t1, grad_output)
+
+
+class Log(Function):
+    @staticmethod
+    def forward(ctx: Context, t1: Tensor) -> Tensor:
+        ctx.save_for_backward(t1)
+        return t1.f.log_map(t1)
+    
+    @staticmethod
+    def backward(ctx: Context, grad_output: Tensor) -> Tensor:
+        (t1,) = ctx.saved_values
+        return grad_output.f.log_back_zip(t1, grad_output)
+
+
+
+class Exp(Function):
+    @staticmethod
+    def forward(ctx: Context, t1: Tensor) -> Tensor:
+        out = t1.f.exp_map(t1)
+        ctx.save_for_backward(out)
+        return out
+    
+    @staticmethod
+    def backward(ctx: Context, grad_output: Tensor) -> Tensor:
+        (result,) = ctx.saved_values
+        return grad_output * result
+
+
+
+class Sum(Function):
+    @staticmethod
+    def forward(ctx: Context, t1: Tensor, dim: Tensor) -> Tensor:
+        dim_int = int(dim.item())
+        ctx.save_for_backward(dim_int, t1.shape)
+        return t1.f.add_reduce(t1, dim_int)
+
+    @staticmethod
+    def backward(ctx: Context, grad_output: Tensor) -> Tuple[Tensor, None]:
+        dim_int, input_shape = ctx.saved_values
+        # Reshape grad_output to allow broadcasting
+        grad_shape = list(input_shape)
+        grad_shape[dim_int] = 1
+        grad_output_reshaped = grad_output.view(*grad_shape)
+        # Expand grad_output to match the input shape
+        grad_input = grad_output_reshaped + 0  # Adding zero triggers broadcasting
+        return grad_input, None   
+
+
+
+class LT(Function):
+    @staticmethod
+    def forward(ctx: Context, t1: Tensor, t2: Tensor) -> Tensor:
+        ctx.save_for_backward(t1, t2)
+        return t1.f.lt_zip(t1, t2)
+
+    @staticmethod
+    def backward(ctx: Context, grad_output: Tensor) -> Tuple[Tensor, Tensor]:
+        # The gradient of a comparison function is zero
+        t1, t2 = ctx.saved_values
+        grad_zero_t1 = t1.zeros()
+        grad_zero_t2 = t2.zeros()
+        return grad_zero_t1, grad_zero_t2
+
+
+
+
+class EQ(Function):
+    @staticmethod
+    def forward(ctx: Context, t1: Tensor, t2: Tensor) -> Tensor:
+        ctx.save_for_backward(t1, t2)
+        return t1.f.eq_zip(t1, t2)
+
+    @staticmethod
+    def backward(ctx: Context, grad_output: Tensor) -> Tuple[Tensor, Tensor]:
+        # The gradient of a comparison function is zero
+        t1, t2 = ctx.saved_values
+        grad_zero_t1 = t1.zeros()
+        grad_zero_t2 = t2.zeros()
+        return grad_zero_t1, grad_zero_t2
+
+
+
+class IsClose(Function):
+    @staticmethod
+    def forward(ctx: Context, t1: Tensor, t2: Tensor) -> Tensor:
+        return t1.f.is_close_zip(t1, t2)
+
+
+class Permute(Function):
+    @staticmethod
+    def forward(ctx: Context, t: Tensor, order: Tensor) -> Tensor:
+        order_list = [int(i) for i in order]
+        ctx.save_for_backward(order_list)
+        return t._new(t._tensor.permute(*order_list))
+    
+    @staticmethod
+    def backward(ctx: Context, grad_output: Tensor) -> Tuple[Tensor, None]:
+        order_list = ctx.saved_values
+        # Compute the inverse permutation
+        inverse_order = [0] * len(order_list)
+        for i, p in enumerate(order_list):
+            inverse_order[p] = i
+        grad_input = grad_output._new(grad_output._tensor.permute(*inverse_order))
+        return grad_input, None
 
 
 class View(Function):
