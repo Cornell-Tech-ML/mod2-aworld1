@@ -95,9 +95,11 @@ class Tensor:
         self.f = backend
 
     def requires_grad_(self, x: bool) -> None:
+        """Set whether this tensor requires gradients."""
         self.history = History()
 
     def requires_grad(self) -> bool:
+        """Returns whether this tensor requires gradients."""
         return self.history is not None
 
     def to_numpy(self) -> npt.NDArray[np.float64]:
@@ -194,6 +196,8 @@ class Tensor:
         # END CODE CHANGE (2021)
 
     def zeros(self, shape: Optional[UserShape] = None) -> Tensor:
+        """Create a new tensor filled with zeros."""
+
         def zero(shape: UserShape) -> Tensor:
             return Tensor.make(
                 [0.0] * int(operators.prod(shape)), shape, backend=self.backend
@@ -239,14 +243,17 @@ class Tensor:
         return self.history is not None and self.history.last_fn is None
 
     def is_constant(self) -> bool:
+        """True if this variable is a constant (no gradient required)"""
         return self.history is None
 
     @property
     def parents(self) -> Iterable[Variable]:
+        """Returns the parents of this variable."""
         assert self.history is not None
         return self.history.inputs
 
     def chain_rule(self, d_output: Any) -> Iterable[Tuple[Variable, Any]]:
+        """Apply the chain rule to get the derivatives of the inputs."""
         h = self.history
         assert h is not None
         assert h.last_fn is not None
@@ -260,15 +267,18 @@ class Tensor:
         ]
 
     def backward(self, grad_output: Optional[Tensor] = None) -> None:
+        """Backpropagate gradients through the computation graph."""
         if grad_output is None:
             assert self.shape == (1,), "Must provide grad_output if non-scalar"
             grad_output = Tensor.make([1.0], (1,), backend=self.backend)
         backpropagate(self, grad_output)
 
     def __truediv__(self, b: TensorLike) -> Tensor:
+        """Element-wise division with broadcasting support."""
         return Mul.apply(self, Inv.apply(self._ensure_tensor(b)))
 
     def __rtruediv__(self, b: TensorLike) -> Tensor:
+        """Element-wise division with broadcasting support."""
         return Mul.apply(self._ensure_tensor(b), Inv.apply(self))
 
     def __matmul__(self, b: Tensor) -> Tensor:
@@ -360,10 +370,13 @@ class Tensor:
         """Computes the sum over the specified dimension.
 
         Args:
+        ----
             dim (int, optional): Dimension to reduce. If None, sums over all elements.
 
         Returns:
+        -------
             Tensor: Summed tensor.
+
         """
         if dim is None:
             # Sum over all elements
@@ -377,10 +390,13 @@ class Tensor:
         """Computes the mean over the specified dimension.
 
         Args:
+        ----
             dim (int, optional): Dimension to reduce. If None, computes mean over all elements.
 
         Returns:
+        -------
             Tensor: Tensor with mean values.
+
         """
         total = self.sum(dim=dim)
         if dim is None:
@@ -393,10 +409,13 @@ class Tensor:
         """Permutes the dimensions of the tensor according to the specified order.
 
         Args:
+        ----
             *order (int): The desired ordering of dimensions.
 
         Returns:
+        -------
             Tensor: Permuted tensor.
+
         """
         order_tensor = tensor(list(order))
         return Permute.apply(self, order_tensor)
@@ -405,10 +424,13 @@ class Tensor:
         """Reshapes the tensor to the specified shape.
 
         Args:
+        ----
             *shape (int): The desired shape.
 
         Returns:
+        -------
             Tensor: Reshaped tensor.
+
         """
         shape_tensor = tensor(list(shape))
         return View.apply(self, shape_tensor)
@@ -417,10 +439,13 @@ class Tensor:
         """Checks if all elements are true (non-zero) over the specified dimension.
 
         Args:
+        ----
             dim (int, optional): Dimension to reduce. If None, checks all elements.
 
         Returns:
+        -------
             Tensor: Tensor with boolean values indicating if all elements are true.
+
         """
         if dim is None:
             # Reduce over all elements
