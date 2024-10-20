@@ -74,7 +74,7 @@ exclude = [
     "**/docs/**/*",
 ]
 
-ignore = [
+lint.ignore = [
     "ANN101",
     "ANN401",
     "N801",
@@ -98,8 +98,8 @@ ignore = [
     "ANN204",
     "ANN102",
 ]
-select = ["D", "E", "F", "N", "ANN"]
-fixable = [
+lint.select = ["D", "E", "F", "N", "ANN"]
+lint.fixable = [
     "A",
     "B",
     "C",
@@ -145,7 +145,7 @@ fixable = [
     "UP",
     "YTT",
 ]
-unfixable = []
+lint.unfixable = []
 
-[tool.ruff.extend-per-file-ignores]
+[tool.ruff.lint.extend-per-file-ignores]
 "tests/**/*.py" = ["D"]
