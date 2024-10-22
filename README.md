@@ -22,20 +22,16 @@ The files that will be synced are:
 
 ### Simple
 
-![Simple Graph](img/simple-graph.png)
-![Simple Loss](img/simple-loss.png)
+![Simple Graph](img/simple-graph.png) ![Simple Loss](img/simple-loss.png)
 
 ### Diag
 
-![Diag Graph](img/diag-graph.png)
-![Diag Loss](img/diag-loss.png)
+![Diag Graph](img/diag-graph.png) ![Diag Loss](img/diag-loss.png)
 
 ### Split
 
-![Split Graph](img/split-graph.png)
-![Split Loss](img/split-loss.png)
+![Split Graph](img/split-graph.png) ![Split Loss](img/split-loss.png)
 
 ### XOR
 
-![XOR Graph](img/xor-graph.png)
-![XOR Loss](img/xor-loss.png)
+![XOR Graph](img/xor-graph.png) ![XOR Loss](img/xor-loss.png)
