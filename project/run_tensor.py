@@ -13,12 +13,14 @@ def RParam(*shape):
 
 class Network(minitorch.Module):
     def __init__(self, hidden_layers):
+        """Initialize the layers of the network."""
         super().__init__()
         self.layer1 = Linear(2, hidden_layers)
         self.layer2 = Linear(hidden_layers, hidden_layers)
         self.layer3 = Linear(hidden_layers, 1)
 
     def forward(self, x):
+        """Forward pass of the network."""
         middle = self.layer1.forward(x).relu()
         end = self.layer2.forward(middle).relu()
         return self.layer3.forward(end).sigmoid()
@@ -26,12 +28,15 @@ class Network(minitorch.Module):
 
 class Linear(minitorch.Module):
     def __init__(self, in_size, out_size):
+        """Initialize the weights and biases of the layer."""
         super().__init__()
         self.weights = self.add_parameter("weights", RParam(out_size, in_size, 1).value)
         self.bias = self.add_parameter("bias", RParam(out_size).value)
 
     def forward(self, inputs):
-        return (self.weights.value * inputs.permute(1,0)).sum(1).view(self.weights.value.shape[0],inputs.shape[0]).permute(1,0) + self.bias.value
+        """Forward pass of the layer."""
+        weighted_inputs = self.weights.value * inputs.permute(1,0)
+        return weighted_inputs.sum(1).view(self.weights.value.shape[0], inputs.shape[0]).permute(1,0) + self.bias.value
 
 def default_log_fn(epoch, total_loss, correct, losses):
     print("Epoch ", epoch, " loss ", total_loss, "correct", correct)
